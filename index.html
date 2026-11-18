@@ -1491,8 +1491,39 @@
                             break;
                         }
                     }
+                    // 檢查是否會被大型建築（拱門、帳篷、樹木、木桌）大面積遮擋
+                    if (valid) {
+                        for (const p of entities) {
+                            if (p.type !== 'prop') continue;
+                            const dx = Math.abs(tx - p.x);
+                            const dy = p.y - ty; // 正值代表物件在目標前方（會畫在目標上層）
+                            if (p.kind === 'arch' && dx < 130 && dy > -40 && dy < 130) {
+                                valid = false; break;
+                            }
+                            if (p.kind === 'tent' && dx < 85 && dy > -35 && dy < 95) {
+                                valid = false; break;
+                            }
+                            if (p.kind === 'tree' && dx < 62 && dy > -25 && dy < 78) {
+                                valid = false; break;
+                            }
+                            if (p.kind === 'table' && dx < 55 && dy > -20 && dy < 45) {
+                                valid = false; break;
+                            }
+                        }
+                    }
                     attempts++;
-                } while (!valid && attempts < 80);
+                } while (!valid && attempts < 150);
+
+                // 二次保險：移除任何仍位於目標前方造成大面積遮蓋的大型裝飾
+                entities = entities.filter(p => {
+                    if (p.type !== 'prop') return true;
+                    const dx = Math.abs(tx - p.x);
+                    const dy = p.y - ty;
+                    if (p.kind === 'tent' && dx < 75 && dy > -20 && dy < 85) return false;
+                    if (p.kind === 'tree' && dx < 55 && dy > -15 && dy < 70) return false;
+                    if (p.kind === 'table' && dx < 48 && dy > -10 && dy < 38) return false;
+                    return true;
+                });
 
                 const targetObj = {
                     type: 'target',
@@ -1520,17 +1551,31 @@
                     const cx = margin + (cIdx + 0.5) * cellW + (Math.random() - 0.5) * cellW * 0.85;
                     const cy = margin + (r + 0.5) * cellH + (Math.random() - 0.5) * cellH * 0.85;
 
-                    // 保護目標小貓正前方不完全遮死
+                    // 保護目標小貓：允許極小邊緣擦過，但絕不允許前排路人大面積遮擋目標
                     let tooCloseToTarget = false;
                     for (const t of targetEntities) {
                         const dx = Math.abs(cx - t.x);
                         const dy = cy - t.y;
-                        if (dx < 26 && dy > -10 && dy < 34) {
+                        if (dx < 32 && dy > -16 && dy < 42) {
                             tooCloseToTarget = true;
                             break;
                         }
                     }
                     if (tooCloseToTarget) continue;
+
+                    // 避免一般路人完全躲在樹冠或帳篷正後方
+                    let hiddenBehindProp = false;
+                    for (const p of entities) {
+                        if (p.type !== 'prop') continue;
+                        const dx = Math.abs(cx - p.x);
+                        const dy = p.y - cy;
+                        if ((p.kind === 'tree' && dx < 36 && dy > 5 && dy < 52) ||
+                            (p.kind === 'tent' && dx < 48 && dy > 5 && dy < 60)) {
+                            hiddenBehindProp = true;
+                            break;
+                        }
+                    }
+                    if (hiddenBehindProp) continue;
 
                     const eyeStyles = ['normal', 'normal', 'normal', 'happy', 'glasses'];
                     const outfitStyles = ['none', 'stripe', 'overalls'];
@@ -1644,6 +1689,17 @@
         }
 
         function animate(timestamp) {
+            // 即時更新頂部遊戲計時器
+            if (!isGameWon && !document.hidden) {
+                const nowSec = Math.floor((Date.now() - startTime) / 1000);
+                if (nowSec !== elapsedSeconds) {
+                    elapsedSeconds = nowSec;
+                    const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+                    const secs = String(elapsedSeconds % 60).padStart(2, '0');
+                    document.getElementById('timerText').textContent = `${mins}:${secs}`;
+                }
+            }
+
             const dpr = window.devicePixelRatio || 1;
             const viewW = canvas.width / dpr;
             const viewH = canvas.height / dpr;
