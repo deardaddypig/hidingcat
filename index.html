@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>尋找節日小貓 - 五大主題挑戰</title>
+    <title>尋找節日小貓 - Where's the cat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
@@ -69,17 +69,17 @@
     <canvas id="gameCanvas"></canvas>
 
     <!-- 頂部狀態與目標提示欄 -->
-    <div class="fixed top-0 left-0 right-0 z-20 pointer-events-none flex flex-col items-center pt-2.5 px-2.5 sm:pt-4">
+    <div id="topHud" class="fixed top-0 left-0 right-0 z-20 pointer-events-none flex flex-col items-center pt-2 px-2 sm:pt-3">
         
         <!-- 五大節日主題切換列 -->
-        <div id="themeSelector" class="w-full max-w-2xl flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 mb-2 pointer-events-auto overflow-x-auto py-0.5 px-1">
+        <div id="themeSelector" class="w-full max-w-2xl flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 mb-1.5 pointer-events-auto overflow-x-auto py-0.5 px-1">
             <!-- 由 JS 動態生成 5 個主題按鈕 -->
         </div>
 
         <!-- 頂部功能小列：關卡、計時、提示與音效 -->
-        <div class="w-full max-w-2xl flex items-center justify-between mb-2 pointer-events-auto gap-1.5">
+        <div class="w-full max-w-2xl flex items-center justify-between mb-1.5 pointer-events-auto gap-1.5">
             <div class="flex items-center gap-1.5 sm:gap-2">
-                <button id="levelBtn" class="comic-btn bg-amber-300 hover:bg-amber-200 text-slate-900 font-bold text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
+                <button id="levelBtn" class="comic-btn bg-amber-300 hover:bg-amber-200 text-slate-900 font-bold text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full flex items-center gap-1 whitespace-nowrap">
                     <span id="themeIcon">🧧</span>
                     <span id="levelLabel">新年・關卡 1/3</span>
                 </button>
@@ -90,27 +90,30 @@
             </div>
 
             <div class="flex items-center gap-1.5 sm:gap-2">
-                <button id="hintBtn" class="comic-btn bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-bold text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
+                <button id="hintBtn" class="comic-btn bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-bold text-xs sm:text-sm px-2.5 sm:px-3 py-1 rounded-full flex items-center gap-1 whitespace-nowrap">
                     <span>🔍</span>
                     <span>提示 (<span id="hintCount">3</span>)</span>
                 </button>
-                <button id="bgmBtn" class="comic-btn bg-amber-100 hover:bg-amber-50 text-slate-900 font-bold text-xs sm:text-sm w-9 h-9 rounded-full flex items-center justify-center shrink-0" title="切換背景音樂">
+                <button id="bgmBtn" class="comic-btn bg-amber-100 hover:bg-amber-50 text-slate-900 font-bold text-xs sm:text-sm w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0" title="切換背景音樂">
                     🎵
                 </button>
-                <button id="soundBtn" class="comic-btn bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs sm:text-sm w-9 h-9 rounded-full flex items-center justify-center shrink-0" title="切換音效">
+                <button id="soundBtn" class="comic-btn bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs sm:text-sm w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0" title="切換音效">
                     🔊
                 </button>
             </div>
         </div>
 
-        <!-- 經典白色粗框任務卡 -->
-        <div class="comic-card rounded-2xl px-3.5 py-2 sm:px-5 sm:py-2.5 max-w-lg w-full pointer-events-auto animate-float">
-            <div class="text-center">
-                <p id="challengeHeadline" class="text-slate-900 font-black text-sm sm:text-lg tracking-tight leading-tight">
+        <!-- 經典白色粗框任務卡（支援點擊右上角收合以釋放更多視野） -->
+        <div id="missionCard" class="comic-card rounded-2xl px-3 py-1.5 sm:px-5 sm:py-2 max-w-lg w-full pointer-events-auto relative">
+            <button id="toggleMissionBtn" class="absolute top-1.5 right-2 text-xs font-black text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg px-1.5 py-0.5 leading-none" title="收合/展開目標欄">
+                ▲
+            </button>
+            <div class="text-center pr-6 sm:pr-0">
+                <p id="challengeHeadline" class="text-slate-900 font-black text-xs sm:text-base tracking-tight leading-tight">
                     新年挑戰：找出隱藏的瑞獅小貓！
                 </p>
                 <!-- 目標列表容器 -->
-                <div id="targetsContainer" class="mt-1.5 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+                <div id="targetsContainer" class="mt-1 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
                     <!-- 由 JS 動態繪製目標小圖示與名稱 -->
                 </div>
             </div>
@@ -1645,23 +1648,23 @@
             const viewW = canvas.width / dpr;
             const viewH = canvas.height / dpr;
 
-            // 更新計時器
-            if (!isGameWon) {
-                const sec = Math.floor((Date.now() - startTime) / 1000);
-                if (sec !== elapsedSeconds) {
-                    elapsedSeconds = sec;
-                    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-                    const ss = String(sec % 60).padStart(2, '0');
-                    document.getElementById('timerText').textContent = `${mm}:${ss}`;
-                }
-            }
+            // 計算頂部功能表實際佔用高度，確保玩家能將地圖最頂端完整拖曳到功能表下方，不被遮擋
+            const topHudEl = document.getElementById('topHud');
+            const topHudPx = topHudEl ? topHudEl.offsetHeight : 190;
+            const topSafeWorld = (topHudPx + 24) / cam.zoom;
+            const sidePadWorld = 140 / cam.zoom;
+            const bottomPadWorld = 120 / cam.zoom;
 
-            // 限制攝影機邊界
+            // 限制攝影機邊界（頂部預留功能表安全距離）
             const halfW = (viewW / 2) / cam.zoom;
             const halfH = (viewH / 2) / cam.zoom;
-            const pad = 160;
-            cam.x = Math.max(halfW - pad, Math.min(WORLD_W - halfW + pad, cam.x));
-            cam.y = Math.max(halfH - pad, Math.min(WORLD_H - halfH + pad, cam.y));
+            const minCamX = Math.min(WORLD_W / 2, halfW - sidePadWorld);
+            const maxCamX = Math.max(WORLD_W / 2, WORLD_W - halfW + sidePadWorld);
+            const minCamY = halfH - topSafeWorld;
+            const maxCamY = Math.max(minCamY, WORLD_H - halfH + bottomPadWorld);
+
+            cam.x = Math.max(minCamX, Math.min(maxCamX, cam.x));
+            cam.y = Math.max(minCamY, Math.min(maxCamY, cam.y));
 
             ctx.save();
             ctx.scale(dpr, dpr);
@@ -1964,10 +1967,12 @@
             playTone('hint');
 
             const target = unfound[0];
-            // 平滑移動攝影機靠近提示目標並啟動雷達波紋
-            cam.x = target.x;
-            cam.y = target.y;
+            // 平滑移動攝影機靠近提示目標（避開頂部功能表區域）並啟動雷達波紋
+            const topHudEl = document.getElementById('topHud');
+            const topHudPx = topHudEl ? topHudEl.offsetHeight : 190;
             cam.zoom = Math.max(cam.zoom, 1.15);
+            cam.x = target.x;
+            cam.y = target.y - (topHudPx * 0.45) / cam.zoom;
 
             for (let k = 0; k < 3; k++) {
                 setTimeout(() => {
@@ -1975,6 +1980,21 @@
                 }, k * 250);
             }
             showToast(`🔍 雷達已鎖定「${TARGET_CATALOG[target.targetId].zhName}」附近！`);
+        });
+
+        // 任務欄收合 / 展開切換按鈕
+        let isMissionCollapsed = false;
+        document.getElementById('toggleMissionBtn').addEventListener('click', () => {
+            isMissionCollapsed = !isMissionCollapsed;
+            const targetsEl = document.getElementById('targetsContainer');
+            const toggleBtn = document.getElementById('toggleMissionBtn');
+            if (isMissionCollapsed) {
+                targetsEl.classList.add('hidden');
+                toggleBtn.textContent = '▼';
+            } else {
+                targetsEl.classList.remove('hidden');
+                toggleBtn.textContent = '▲';
+            }
         });
 
         document.getElementById('bgmBtn').addEventListener('click', () => {
@@ -2017,9 +2037,11 @@
         });
 
         document.getElementById('resetViewBtn').addEventListener('click', () => {
-            cam.x = WORLD_W / 2;
-            cam.y = WORLD_H / 2;
+            const topHudEl = document.getElementById('topHud');
+            const topHudPx = topHudEl ? topHudEl.offsetHeight : 190;
             cam.zoom = 0.65;
+            cam.x = WORLD_W / 2;
+            cam.y = WORLD_H / 2 - (topHudPx * 0.4) / cam.zoom;
             showToast('已重設為全景視角 🎯');
         });
 
