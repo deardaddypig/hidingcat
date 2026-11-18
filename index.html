@@ -1,0 +1,2055 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>尋找節日小貓 - 五大主題挑戰</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+            background-color: #1e1b2e;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        /* 手繪漫畫粗黑框與立體投影效果 */
+        .comic-card {
+            background: #ffffff;
+            border: 3.5px solid #1a1625;
+            box-shadow: 0 5px 0 #1a1625;
+        }
+        .comic-btn {
+            border: 3px solid #1a1625;
+            box-shadow: 0 3px 0 #1a1625;
+            transition: transform 0.08s ease, box-shadow 0.08s ease;
+        }
+        .comic-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 0 0 #1a1625;
+        }
+        @keyframes pulse-gentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        .animate-float {
+            animation: pulse-gentle 3s infinite ease-in-out;
+        }
+        /* 隱藏主題列捲軸 */
+        #themeSelector::-webkit-scrollbar {
+            display: none;
+        }
+        #themeSelector {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 遊戲主畫布 -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 頂部狀態與目標提示欄 -->
+    <div class="fixed top-0 left-0 right-0 z-20 pointer-events-none flex flex-col items-center pt-2.5 px-2.5 sm:pt-4">
+        
+        <!-- 五大節日主題切換列 -->
+        <div id="themeSelector" class="w-full max-w-2xl flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 mb-2 pointer-events-auto overflow-x-auto py-0.5 px-1">
+            <!-- 由 JS 動態生成 5 個主題按鈕 -->
+        </div>
+
+        <!-- 頂部功能小列：關卡、計時、提示與音效 -->
+        <div class="w-full max-w-2xl flex items-center justify-between mb-2 pointer-events-auto gap-1.5">
+            <div class="flex items-center gap-1.5 sm:gap-2">
+                <button id="levelBtn" class="comic-btn bg-amber-300 hover:bg-amber-200 text-slate-900 font-bold text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
+                    <span id="themeIcon">🧧</span>
+                    <span id="levelLabel">新年・關卡 1/3</span>
+                </button>
+                <div class="comic-card px-2.5 sm:px-3 py-1 rounded-full text-slate-900 font-bold text-xs sm:text-sm flex items-center gap-1 whitespace-nowrap">
+                    <span>⏱️</span>
+                    <span id="timerText">00:00</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 sm:gap-2">
+                <button id="hintBtn" class="comic-btn bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-bold text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
+                    <span>🔍</span>
+                    <span>提示 (<span id="hintCount">3</span>)</span>
+                </button>
+                <button id="bgmBtn" class="comic-btn bg-amber-100 hover:bg-amber-50 text-slate-900 font-bold text-xs sm:text-sm w-9 h-9 rounded-full flex items-center justify-center shrink-0" title="切換背景音樂">
+                    🎵
+                </button>
+                <button id="soundBtn" class="comic-btn bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs sm:text-sm w-9 h-9 rounded-full flex items-center justify-center shrink-0" title="切換音效">
+                    🔊
+                </button>
+            </div>
+        </div>
+
+        <!-- 經典白色粗框任務卡 -->
+        <div class="comic-card rounded-2xl px-3.5 py-2 sm:px-5 sm:py-2.5 max-w-lg w-full pointer-events-auto animate-float">
+            <div class="text-center">
+                <p id="challengeHeadline" class="text-slate-900 font-black text-sm sm:text-lg tracking-tight leading-tight">
+                    新年挑戰：找出隱藏的瑞獅小貓！
+                </p>
+                <!-- 目標列表容器 -->
+                <div id="targetsContainer" class="mt-1.5 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+                    <!-- 由 JS 動態繪製目標小圖示與名稱 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右下角縮放與重置視角控制鈕 -->
+    <div class="fixed bottom-5 right-4 z-20 flex flex-col gap-2.5">
+        <button id="zoomInBtn" class="comic-btn bg-white hover:bg-slate-100 text-slate-900 font-black text-xl w-11 h-11 rounded-2xl flex items-center justify-center" title="放大">
+            +
+        </button>
+        <button id="zoomOutBtn" class="comic-btn bg-white hover:bg-slate-100 text-slate-900 font-black text-xl w-11 h-11 rounded-2xl flex items-center justify-center" title="縮小">
+            −
+        </button>
+        <button id="resetViewBtn" class="comic-btn bg-amber-300 hover:bg-amber-200 text-slate-900 font-bold text-sm w-11 h-11 rounded-2xl flex items-center justify-center" title="重設視角">
+            🎯
+        </button>
+    </div>
+
+    <!-- 左下角操作提示膠囊 -->
+    <div class="fixed bottom-5 left-4 z-20 pointer-events-none hidden sm:block">
+        <div class="comic-card bg-white/95 px-3.5 py-2 rounded-2xl text-xs font-bold text-slate-700">
+            🖱️ 拖曳移動地圖 ・ 滾輪 / 雙指縮放 ・ 點擊尋找隱藏小貓
+        </div>
+    </div>
+
+    <!-- 訊息提示浮層 -->
+    <div id="toastBox" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-200">
+        <div id="toastText" class="comic-card bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap">
+            提示訊息
+        </div>
+    </div>
+
+    <!-- 過關慶祝彈窗 -->
+    <div id="winModal" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="comic-card rounded-3xl max-w-sm w-full p-6 text-center transform scale-100 transition-transform">
+            <div class="text-5xl mb-2">🎉🐱🎉</div>
+            <h2 id="winTitle" class="text-2xl font-black text-slate-900 mb-1">太神啦！全部找到了！</h2>
+            <p id="winSubtitle" class="text-slate-600 font-bold text-sm mb-4">你成功擠進了眼力最強的 1% 玩家！</p>
+            
+            <div class="bg-amber-100 border-2 border-slate-900 rounded-2xl p-3 mb-5 flex justify-around">
+                <div>
+                    <div class="text-xs font-bold text-slate-500">通關時間</div>
+                    <div id="finalTime" class="text-xl font-black text-slate-900">00:18</div>
+                </div>
+                <div class="w-0.5 bg-slate-900/20"></div>
+                <div>
+                    <div class="text-xs font-bold text-slate-500">使用提示</div>
+                    <div id="finalHints" class="text-xl font-black text-slate-900">0 次</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2.5">
+                <button id="nextLevelBtn" class="comic-btn w-full bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-black py-3 rounded-2xl text-base">
+                    挑戰本主題下一關 ➡️
+                </button>
+                <button id="replayLevelBtn" class="comic-btn w-full bg-white hover:bg-slate-100 text-slate-800 font-bold py-2.5 rounded-2xl text-sm">
+                    重新隨機生成本關 🔄
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ==========================================
+         * 1. 音效與柔和背景音樂合成器 (Web Audio API)
+         * ==========================================
+         */
+        let soundEnabled = true;
+        let bgmEnabled = true;
+        let audioCtx = null;
+        let bgmBus = null;
+        let bgmInterval = null;
+        let bgmStep = 0;
+
+        // 柔和治癒系和弦進行 (Cmaj7 -> Am7 -> Fmaj7 -> G6)
+        const BGM_CHORDS = [
+            [261.63, 329.63, 392.00, 493.88], // Cmaj7
+            [220.00, 261.63, 329.63, 392.00], // Am7
+            [174.61, 220.00, 261.63, 329.63], // Fmaj7
+            [196.00, 246.94, 293.66, 329.63]  // G6
+        ];
+
+        // 輕柔八音盒旋律音符 (每小節 8 拍，null 代表留白呼吸感)
+        const BGM_MELODY = [
+            659.25, null, 587.33, 523.25, 493.88, null, 523.25, null,
+            523.25, null, 493.88, 440.00, 392.00, null, 440.00, null,
+            440.00, null, 523.25, 587.33, 659.25, null, 587.33, null,
+            587.33, null, 493.88, 440.00, 392.00, null, null, null
+        ];
+
+        function ensureAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                // 建立柔和空間迴響混音匯流排
+                bgmBus = audioCtx.createGain();
+                bgmBus.gain.setValueAtTime(0.85, audioCtx.currentTime);
+
+                const delay = audioCtx.createDelay();
+                delay.delayTime.setValueAtTime(0.36, audioCtx.currentTime);
+                const feedback = audioCtx.createGain();
+                feedback.gain.setValueAtTime(0.28, audioCtx.currentTime);
+                const dampFilter = audioCtx.createBiquadFilter();
+                dampFilter.type = 'lowpass';
+                dampFilter.frequency.setValueAtTime(1100, audioCtx.currentTime);
+
+                bgmBus.connect(audioCtx.destination);
+                bgmBus.connect(delay);
+                delay.connect(dampFilter);
+                dampFilter.connect(feedback);
+                feedback.connect(delay);
+                dampFilter.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playBgmStep() {
+            if (!bgmEnabled || !soundEnabled || document.hidden) return;
+            try {
+                ensureAudio();
+                if (audioCtx.state !== 'running') return;
+
+                const now = audioCtx.currentTime;
+                const stepInBar = bgmStep % 8;
+                const barIndex = Math.floor(bgmStep / 8) % BGM_CHORDS.length;
+
+                // 每小節第 1 拍彈奏溫暖低通濾波和弦墊音
+                if (stepInBar === 0) {
+                    const chord = BGM_CHORDS[barIndex];
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(560, now);
+                    filter.connect(bgmBus || audioCtx.destination);
+
+                    chord.forEach(freq => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now);
+
+                        gain.gain.setValueAtTime(0.0001, now);
+                        gain.gain.linearRampToValueAtTime(0.015, now + 0.75);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.6);
+
+                        osc.connect(gain);
+                        gain.connect(filter);
+                        osc.start(now);
+                        osc.stop(now + 3.7);
+                    });
+                }
+
+                // 彈奏輕柔八音盒主旋律
+                const noteFreq = BGM_MELODY[bgmStep % BGM_MELODY.length];
+                if (noteFreq) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(noteFreq, now);
+
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(0.028, now + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+
+                    osc.connect(gain);
+                    gain.connect(bgmBus || audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 1.55);
+                }
+
+                bgmStep = (bgmStep + 1) % BGM_MELODY.length;
+            } catch (e) {
+                // 忽略瀏覽器自動播放限制
+            }
+        }
+
+        function startBgm() {
+            if (bgmInterval) return;
+            playBgmStep();
+            bgmInterval = setInterval(playBgmStep, 480);
+        }
+
+        function stopBgm() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        function unlockAudioOnFirstGesture() {
+            ensureAudio();
+            if (bgmEnabled && soundEnabled) {
+                startBgm();
+            }
+            window.removeEventListener('pointerdown', unlockAudioOnFirstGesture);
+            window.removeEventListener('touchstart', unlockAudioOnFirstGesture);
+            window.removeEventListener('click', unlockAudioOnFirstGesture);
+        }
+        window.addEventListener('pointerdown', unlockAudioOnFirstGesture);
+        window.addEventListener('touchstart', unlockAudioOnFirstGesture);
+        window.addEventListener('click', unlockAudioOnFirstGesture);
+
+        function playTone(type) {
+            if (!soundEnabled) return;
+            try {
+                ensureAudio();
+                const now = audioCtx.currentTime;
+                if (type === 'found') {
+                    const notes = [523.25, 659.25, 783.99, 1046.5];
+                    notes.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+                        gain.gain.setValueAtTime(0.14, now + idx * 0.07);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.35);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.07);
+                        osc.stop(now + idx * 0.07 + 0.36);
+                    });
+                } else if (type === 'miss') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.exponentialRampToValueAtTime(140, now + 0.14);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.16);
+                } else if (type === 'hint') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.33);
+                } else if (type === 'win') {
+                    const melody = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+                    melody.forEach((freq, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.11);
+                        gain.gain.setValueAtTime(0.15, now + i * 0.11);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.4);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + i * 0.11);
+                        osc.stop(now + i * 0.11 + 0.42);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        /**
+         * ==========================================
+         * 2. 五大節日主題與角色圖鑑設定 (每主題 3 關)
+         * ==========================================
+         */
+        const TARGET_CATALOG = {
+            // 1. 新年主題角色
+            lion_kitty: { id: 'lion_kitty', name: 'Lion Dance Kitty', zhName: '舞獅萌貓', headline: '新年挑戰：找出隱藏的瑞獅小貓！' },
+            god_wealth_kitty: { id: 'god_wealth_kitty', name: 'Fortune Kitty', zhName: '招財神貓', headline: '新年尋寶：找出全部新春小貓！' },
+            lantern_kitty: { id: 'lantern_kitty', name: 'Lantern Kitty', zhName: '紅燈籠貓', headline: '新年尋寶：找出全部新春小貓！' },
+            ingot_kitty: { id: 'ingot_kitty', name: 'Gold Ingot Kitty', zhName: '金元寶貓', headline: '新春大師：找出全部 4 隻吉祥貓！' },
+
+            // 2. 復活節主題角色
+            bunny_kitty: { id: 'bunny_kitty', name: 'Easter Bunny Kitty', zhName: '垂耳兔貓', headline: '復活節挑戰：只有 1% 能找到垂耳兔貓！' },
+            egg_kitty: { id: 'egg_kitty', name: 'Painted Egg Kitty', zhName: '彩蛋殼貓', headline: '復活節尋蛋：找出全部隱藏小貓！' },
+            chick_kitty: { id: 'chick_kitty', name: 'Spring Chick Kitty', zhName: '小黃雞貓', headline: '復活節尋蛋：找出全部隱藏小貓！' },
+            flower_kitty: { id: 'flower_kitty', name: 'Daisy Crown Kitty', zhName: '花環仙子貓', headline: '春日大師：找出全部 4 隻復活節貓！' },
+
+            // 3. 暑假主題角色
+            snorkel_kitty: { id: 'snorkel_kitty', name: 'Snorkel Kitty', zhName: '潛水蛙鏡貓', headline: '暑假海灘：找出潛水蛙鏡小貓！' },
+            watermelon_kitty: { id: 'watermelon_kitty', name: 'Watermelon Kitty', zhName: '西瓜泳圈貓', headline: '夏日派對：找出全部消暑小貓！' },
+            pineapple_kitty: { id: 'pineapple_kitty', name: 'Pineapple Kitty', zhName: '鳳梨墨鏡貓', headline: '夏日派對：找出全部消暑小貓！' },
+            icecream_kitty: { id: 'icecream_kitty', name: 'Gelato Kitty', zhName: '甜筒雪糕貓', headline: '盛夏大師：找出全部 4 隻海灘貓！' },
+
+            // 4. 中秋節主題角色
+            jade_rabbit_kitty: { id: 'jade_rabbit_kitty', name: 'Jade Rabbit Kitty', zhName: '月宮玉兔貓', headline: '中秋月圓：找出隱藏的月宮玉兔貓！' },
+            mooncake_kitty: { id: 'mooncake_kitty', name: 'Mooncake Kitty', zhName: '蓮蓉月餅貓', headline: '中秋燈會：找出全部賞月小貓！' },
+            star_lantern_kitty: { id: 'star_lantern_kitty', name: 'Star Lantern Kitty', zhName: '楊桃燈籠貓', headline: '中秋燈會：找出全部賞月小貓！' },
+            pomelo_kitty: { id: 'pomelo_kitty', name: 'Pomelo Hat Kitty', zhName: '柚子皮帽貓', headline: '花好月圓：找出全部 4 隻中秋貓！' },
+
+            // 5. 聖誕節主題角色
+            santa_kitty: { id: 'santa_kitty', name: 'Santa Claus Kitty', zhName: '聖誕老人貓', headline: '聖誕驚喜：找出隱藏的聖誕老人貓！' },
+            reindeer_kitty: { id: 'reindeer_kitty', name: 'Reindeer Kitty', zhName: '紅鼻馴鹿貓', headline: '雪夜狂歡：找出全部聖誕小貓！' },
+            snowman_kitty: { id: 'snowman_kitty', name: 'Snowman Kitty', zhName: '圍巾雪人貓', headline: '雪夜狂歡：找出全部聖誕小貓！' },
+            gingerbread_kitty: { id: 'gingerbread_kitty', name: 'Gingerbread Kitty', zhName: '薑餅人小貓', headline: '聖誕大師：找出全部 4 隻冬日貓！' }
+        };
+
+        const THEMES = [
+            {
+                id: 'cny',
+                name: '新年',
+                icon: '🧧',
+                btnColor: 'bg-red-500 text-white',
+                palette: {
+                    ground: '#8f473e',
+                    groundTile: '#7a3931',
+                    road: '#d9b382',
+                    roadBorder: '#3b231e',
+                    treeLeaves: ['#e63946', '#f4a261', '#ffb703', '#d62828'],
+                    archColor: '#d62828',
+                    archAccent: '#ffb703',
+                    tentA: '#e63946',
+                    tentB: '#ffd166',
+                    bannerColors: ['#e63946', '#ffb703', '#ff7b00', '#ffd166'],
+                    propType: 'cny'
+                },
+                levels: [
+                    { targets: ['lion_kitty'], crowdCount: 820 },
+                    { targets: ['lion_kitty', 'god_wealth_kitty', 'lantern_kitty'], crowdCount: 1150 },
+                    { targets: ['lion_kitty', 'god_wealth_kitty', 'lantern_kitty', 'ingot_kitty'], crowdCount: 1520 }
+                ]
+            },
+            {
+                id: 'easter',
+                name: '復活節',
+                icon: '🐰',
+                btnColor: 'bg-pink-400 text-slate-900',
+                palette: {
+                    ground: '#74b876',
+                    groundTile: '#63a665',
+                    road: '#f2e2c4',
+                    roadBorder: '#3b4a3c',
+                    treeLeaves: ['#ffafcc', '#bde0fe', '#ffd6a5', '#caffbf'],
+                    archColor: '#ff8fab',
+                    archAccent: '#bde0fe',
+                    tentA: '#ffafcc',
+                    tentB: '#fff3b0',
+                    bannerColors: ['#ffafcc', '#bde0fe', '#ffd6a5', '#caffbf'],
+                    propType: 'easter'
+                },
+                levels: [
+                    { targets: ['bunny_kitty'], crowdCount: 820 },
+                    { targets: ['bunny_kitty', 'egg_kitty', 'chick_kitty'], crowdCount: 1150 },
+                    { targets: ['bunny_kitty', 'egg_kitty', 'chick_kitty', 'flower_kitty'], crowdCount: 1520 }
+                ]
+            },
+            {
+                id: 'summer',
+                name: '暑假',
+                icon: '🏖️',
+                btnColor: 'bg-sky-400 text-slate-900',
+                palette: {
+                    ground: '#f2d096',
+                    groundTile: '#e6c081',
+                    road: '#56cfe1',
+                    roadBorder: '#1d4e66',
+                    treeLeaves: ['#4ea8de', '#52b788', '#ffb703', '#ff7b00'],
+                    archColor: '#ff7b00',
+                    archAccent: '#48cae4',
+                    tentA: '#00b4d8',
+                    tentB: '#ffffff',
+                    bannerColors: ['#ff595e', '#ffca3a', '#8ac926', '#1982c4'],
+                    propType: 'summer'
+                },
+                levels: [
+                    { targets: ['snorkel_kitty'], crowdCount: 820 },
+                    { targets: ['snorkel_kitty', 'watermelon_kitty', 'pineapple_kitty'], crowdCount: 1150 },
+                    { targets: ['snorkel_kitty', 'watermelon_kitty', 'pineapple_kitty', 'icecream_kitty'], crowdCount: 1520 }
+                ]
+            },
+            {
+                id: 'midautumn',
+                name: '中秋節',
+                icon: '🥮',
+                btnColor: 'bg-indigo-500 text-white',
+                palette: {
+                    ground: '#3d3b66',
+                    groundTile: '#323057',
+                    road: '#8a81a6',
+                    roadBorder: '#1e1b33',
+                    treeLeaves: ['#ffb703', '#fb8500', '#ffd166', '#9d4edd'],
+                    archColor: '#7209b7',
+                    archAccent: '#ffb703',
+                    tentA: '#f77f00',
+                    tentB: '#fcbf49',
+                    bannerColors: ['#ffb703', '#fb8500', '#ff595e', '#c77dff'],
+                    propType: 'midautumn'
+                },
+                levels: [
+                    { targets: ['jade_rabbit_kitty'], crowdCount: 820 },
+                    { targets: ['jade_rabbit_kitty', 'mooncake_kitty', 'star_lantern_kitty'], crowdCount: 1150 },
+                    { targets: ['jade_rabbit_kitty', 'mooncake_kitty', 'star_lantern_kitty', 'pomelo_kitty'], crowdCount: 1520 }
+                ]
+            },
+            {
+                id: 'christmas',
+                name: '聖誕節',
+                icon: '🎄',
+                btnColor: 'bg-emerald-600 text-white',
+                palette: {
+                    ground: '#dbe9f4',
+                    groundTile: '#c8dced',
+                    road: '#9bb5cc',
+                    roadBorder: '#263849',
+                    treeLeaves: ['#2d6a4f', '#40916c', '#1b4332', '#d62828'],
+                    archColor: '#d62828',
+                    archAccent: '#2d6a4f',
+                    tentA: '#d62828',
+                    tentB: '#ffffff',
+                    bannerColors: ['#d62828', '#2d6a4f', '#ffb703', '#ffffff'],
+                    propType: 'christmas'
+                },
+                levels: [
+                    { targets: ['santa_kitty'], crowdCount: 820 },
+                    { targets: ['santa_kitty', 'reindeer_kitty', 'snowman_kitty'], crowdCount: 1150 },
+                    { targets: ['santa_kitty', 'reindeer_kitty', 'snowman_kitty', 'gingerbread_kitty'], crowdCount: 1520 }
+                ]
+            }
+        ];
+
+        /**
+         * ==========================================
+         * 3. 遊戲全域狀態與世界參數
+         * ==========================================
+         */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const WORLD_W = 2400;
+        const WORLD_H = 3000;
+
+        let currentThemeIdx = 0;
+        let currentLevelIdx = 0;
+        let entities = [];
+        let targetEntities = [];
+        let particles = [];
+        let hintRings = [];
+        let hintsLeft = 3;
+        let hintsUsed = 0;
+        let startTime = Date.now();
+        let elapsedSeconds = 0;
+        let isGameWon = false;
+
+        // 攝影機變換狀態
+        let cam = {
+            x: WORLD_W / 2,
+            y: WORLD_H / 2,
+            zoom: 0.72,
+            minZoom: 0.38,
+            maxZoom: 2.5
+        };
+
+        // 觸控與滑鼠手勢追蹤
+        let isDragging = false;
+        let dragMoved = false;
+        let lastPointerX = 0;
+        let lastPointerY = 0;
+        let initialPinchDist = 0;
+        let initialPinchZoom = 1;
+
+        function roundRectPath(c, x, y, w, h, r) {
+            c.beginPath();
+            if (typeof c.roundRect === 'function') {
+                c.roundRect(x, y, w, h, r);
+            } else {
+                const rad = Math.min(r, w / 2, h / 2);
+                c.moveTo(x + rad, y);
+                c.arcTo(x + w, y, x + w, y + h, rad);
+                c.arcTo(x + w, y + h, x, y + h, rad);
+                c.arcTo(x, y + h, x, y, rad);
+                c.arcTo(x, y, x + w, y, rad);
+                c.closePath();
+            }
+        }
+
+        /**
+         * ==========================================
+         * 4. 高細緻度手繪卡通角色與場景繪製函數
+         * ==========================================
+         */
+        function drawDetailedKitty(c, x, y, scale, opt) {
+            c.save();
+            c.translate(x, y);
+            c.scale(scale, scale);
+
+            const furColor = opt.furColor || '#ffffff';
+            const earInner = opt.earInner || '#ffb5c5';
+            const cheekColor = opt.cheekColor || 'rgba(255, 130, 155, 0.55)';
+            const outline = '#1a1625';
+            c.lineWidth = 2.6;
+            c.strokeStyle = outline;
+            c.lineJoin = 'round';
+            c.lineCap = 'round';
+
+            // 1. 地面立體接觸陰影
+            c.fillStyle = 'rgba(20, 16, 35, 0.25)';
+            c.beginPath();
+            c.ellipse(0, 19, 17, 6.5, 0, 0, Math.PI * 2);
+            c.fill();
+
+            // 2. 搖擺貓尾巴
+            if (!opt.noTail) {
+                const tailDir = opt.tailDir || 1;
+                c.fillStyle = opt.tailColor || furColor;
+                c.beginPath();
+                c.moveTo(11 * tailDir, 12);
+                c.bezierCurveTo(23 * tailDir, 8, 25 * tailDir, -4, 18 * tailDir, -6);
+                c.bezierCurveTo(14 * tailDir, -7, 13 * tailDir, 3, 9 * tailDir, 8);
+                c.closePath();
+                c.fill();
+                c.stroke();
+            }
+
+            // 3. 身體與小腳丫
+            c.fillStyle = opt.outfitColor || furColor;
+            c.beginPath();
+            c.moveTo(-13, 2);
+            c.bezierCurveTo(-15, 14, -12, 19, -5, 19);
+            c.lineTo(5, 19);
+            c.bezierCurveTo(12, 19, 15, 14, 13, 2);
+            c.closePath();
+            c.fill();
+            c.stroke();
+
+            // 衣服精緻紋理 (條紋/領結/鈴鐺)
+            if (opt.outfitStyle === 'stripe') {
+                c.fillStyle = opt.outfitAccent || '#ff6b6b';
+                c.fillRect(-12, 8, 24, 3.5);
+                c.fillRect(-11, 14, 22, 3);
+            } else if (opt.outfitStyle === 'overalls') {
+                c.fillStyle = opt.outfitAccent || '#4ea8de';
+                c.beginPath();
+                c.rect(-9, 7, 18, 11);
+                c.fill();
+                c.stroke();
+                // 鈕扣
+                c.fillStyle = '#ffd166';
+                c.beginPath();
+                c.arc(-6, 9, 1.5, 0, Math.PI * 2);
+                c.arc(6, 9, 1.5, 0, Math.PI * 2);
+                c.fill();
+            }
+
+            // 小手爪
+            c.fillStyle = furColor;
+            c.beginPath();
+            c.ellipse(-11, 10, 3.8, 3, -0.3, 0, Math.PI * 2);
+            c.fill();
+            c.stroke();
+            c.beginPath();
+            c.ellipse(11, 10, 3.8, 3, 0.3, 0, Math.PI * 2);
+            c.fill();
+            c.stroke();
+
+            // 項圈與金色小鈴鐺
+            if (opt.collarColor) {
+                c.strokeStyle = opt.collarColor;
+                c.lineWidth = 3.5;
+                c.beginPath();
+                c.moveTo(-10, 3);
+                c.quadraticCurveTo(0, 6, 10, 3);
+                c.stroke();
+                c.strokeStyle = outline;
+                c.lineWidth = 2.2;
+
+                c.fillStyle = '#ffd166';
+                c.beginPath();
+                c.arc(0, 6.5, 3.2, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            }
+
+            // 4. 貓耳朵 (含粉嫩內耳三角)
+            if (!opt.hideEars) {
+                // 左耳
+                c.fillStyle = furColor;
+                c.beginPath();
+                c.moveTo(-16, -9);
+                c.lineTo(-19, -23);
+                c.lineTo(-6, -16);
+                c.closePath();
+                c.fill();
+                c.stroke();
+                // 左內耳
+                c.fillStyle = earInner;
+                c.beginPath();
+                c.moveTo(-15, -11);
+                c.lineTo(-17, -19.5);
+                c.lineTo(-9, -15);
+                c.closePath();
+                c.fill();
+
+                // 右耳
+                c.fillStyle = furColor;
+                c.beginPath();
+                c.moveTo(16, -9);
+                c.lineTo(19, -23);
+                c.lineTo(6, -16);
+                c.closePath();
+                c.fill();
+                c.stroke();
+                // 右內耳
+                c.fillStyle = earInner;
+                c.beginPath();
+                c.moveTo(15, -11);
+                c.lineTo(17, -19.5);
+                c.lineTo(9, -15);
+                c.closePath();
+                c.fill();
+            }
+
+            // 5. 圓潤臉蛋與立體高光
+            c.fillStyle = furColor;
+            c.beginPath();
+            c.ellipse(0, -6, 18.5, 14.5, 0, 0, Math.PI * 2);
+            c.fill();
+            c.stroke();
+
+            // 額頭三花或虎斑花紋
+            if (opt.foreheadPatch) {
+                c.fillStyle = opt.foreheadPatch;
+                c.beginPath();
+                c.ellipse(-7, -15, 6, 4.5, -0.3, 0, Math.PI * 2);
+                c.fill();
+            }
+
+            // 6. 特色頭套與節日裝扮 (外層)
+            if (opt.costume) {
+                drawKittyCostume(c, opt.costume, outline);
+            }
+
+            // 7. 精緻五官：星光大眼、腮紅、W形貓嘴、雙側貓鬚
+            // 腮紅
+            c.fillStyle = cheekColor;
+            c.beginPath();
+            c.ellipse(-10.5, -3.5, 3.8, 2.2, 0, 0, Math.PI * 2);
+            c.ellipse(10.5, -3.5, 3.8, 2.2, 0, 0, Math.PI * 2);
+            c.fill();
+
+            // 眼睛
+            if (opt.eyeStyle === 'happy') {
+                c.strokeStyle = outline;
+                c.lineWidth = 2.4;
+                c.beginPath();
+                c.arc(-7, -6.5, 3.2, Math.PI, 0);
+                c.stroke();
+                c.beginPath();
+                c.arc(7, -6.5, 3.2, Math.PI, 0);
+                c.stroke();
+            } else if (opt.eyeStyle === 'glasses') {
+                // 圓框眼鏡干擾路人
+                c.fillStyle = '#ffffff';
+                c.beginPath();
+                c.arc(-7, -6.5, 4.8, 0, Math.PI * 2);
+                c.arc(7, -6.5, 4.8, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+                c.beginPath();
+                c.moveTo(-2.2, -6.5);
+                c.lineTo(2.2, -6.5);
+                c.stroke();
+                c.fillStyle = outline;
+                c.beginPath();
+                c.arc(-7, -6.5, 2, 0, Math.PI * 2);
+                c.arc(7, -6.5, 2, 0, Math.PI * 2);
+                c.fill();
+            } else {
+                // 水汪汪星光高光眼
+                c.fillStyle = outline;
+                c.beginPath();
+                c.arc(-7, -6.5, 2.8, 0, Math.PI * 2);
+                c.arc(7, -6.5, 2.8, 0, Math.PI * 2);
+                c.fill();
+                // 眼神高光白點
+                c.fillStyle = '#ffffff';
+                c.beginPath();
+                c.arc(-7.9, -7.5, 1.1, 0, Math.PI * 2);
+                c.arc(6.1, -7.5, 1.1, 0, Math.PI * 2);
+                c.fill();
+            }
+
+            // 粉嫩小鼻子與 W 形貓嘴
+            c.fillStyle = '#ff758f';
+            c.beginPath();
+            c.ellipse(0, -4.2, 2.1, 1.4, 0, 0, Math.PI * 2);
+            c.fill();
+
+            c.strokeStyle = outline;
+            c.lineWidth = 2;
+            c.beginPath();
+            c.moveTo(-3.2, -2.2);
+            c.quadraticCurveTo(-1.6, -0.2, 0, -2.5);
+            c.quadraticCurveTo(1.6, -0.2, 3.2, -2.2);
+            c.stroke();
+
+            // 雙側貓鬚
+            c.lineWidth = 1.6;
+            c.beginPath();
+            c.moveTo(-14, -5.5); c.lineTo(-20, -6.8);
+            c.moveTo(-14, -2.8); c.lineTo(-20, -2.2);
+            c.moveTo(14, -5.5); c.lineTo(20, -6.8);
+            c.moveTo(14, -2.8); c.lineTo(20, -2.2);
+            c.stroke();
+
+            // 8. 前置配件 (例如潛水鏡、墨鏡、手持小道具)
+            if (opt.frontAccessory) {
+                drawFrontAccessory(c, opt.frontAccessory, outline);
+            }
+
+            c.restore();
+        }
+
+        function drawKittyCostume(c, type, outline) {
+            c.strokeStyle = outline;
+            c.lineWidth = 2.5;
+
+            switch (type) {
+                // --- 新年主題 ---
+                case 'lion_dance': // 舞獅頭套
+                    c.fillStyle = '#e63946';
+                    c.beginPath();
+                    c.arc(0, -14, 16, Math.PI, 0);
+                    c.fill();
+                    c.stroke();
+                    // 金色毛邊與額頭獨角
+                    c.fillStyle = '#ffd166';
+                    c.beginPath();
+                    c.moveTo(-4, -26); c.lineTo(0, -35); c.lineTo(4, -26);
+                    c.closePath();
+                    c.fill();
+                    c.stroke();
+                    // 獅頭大眼
+                    c.fillStyle = '#ffffff';
+                    c.beginPath();
+                    c.arc(-8, -19, 4.5, 0, Math.PI * 2);
+                    c.arc(8, -19, 4.5, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    c.fillStyle = outline;
+                    c.beginPath();
+                    c.arc(-8, -19, 2, 0, Math.PI * 2);
+                    c.arc(8, -19, 2, 0, Math.PI * 2);
+                    c.fill();
+                    break;
+
+                case 'god_wealth': // 財神帽
+                    c.fillStyle = '#d62828';
+                    roundRectPath(c, -14, -28, 28, 12, 4);
+                    c.fill();
+                    c.stroke();
+                    // 兩側帽翅
+                    c.fillStyle = '#ffb703';
+                    roundRectPath(c, -24, -24, 10, 5, 2.5);
+                    c.fill();
+                    c.stroke();
+                    roundRectPath(c, 14, -24, 10, 5, 2.5);
+                    c.fill();
+                    c.stroke();
+                    // 帽徽寶石
+                    c.beginPath();
+                    c.arc(0, -22, 3.5, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                case 'lantern': // 紅燈籠頭套
+                    c.fillStyle = '#ff4d6d';
+                    c.beginPath();
+                    c.ellipse(0, -10, 21, 17, 0, Math.PI * 1.1, Math.PI * 1.9);
+                    c.fill();
+                    c.stroke();
+                    c.fillStyle = '#ffb703';
+                    c.fillRect(-10, -28, 20, 4);
+                    c.strokeRect(-10, -28, 20, 4);
+                    break;
+
+                case 'ingot': // 金元寶頭飾
+                    c.fillStyle = '#ffd166';
+                    c.beginPath();
+                    c.moveTo(-18, -22);
+                    c.quadraticCurveTo(0, -15, 18, -22);
+                    c.lineTo(13, -14);
+                    c.lineTo(-13, -14);
+                    c.closePath();
+                    c.fill();
+                    c.stroke();
+                    c.beginPath();
+                    c.arc(0, -21, 6, Math.PI, 0);
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                // --- 復活節主題 ---
+                case 'easter_bunny': // 垂耳兔帽
+                    c.fillStyle = '#ffafcc';
+                    c.beginPath();
+                    c.ellipse(-13, -23, 5, 13, -0.35, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    c.beginPath();
+                    c.ellipse(13, -23, 5, 13, 0.35, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                case 'painted_egg': // 彩蛋殼帽
+                    c.fillStyle = '#bde0fe';
+                    c.beginPath();
+                    c.arc(0, -15, 16, Math.PI, 0);
+                    c.lineTo(16, -12);
+                    c.lineTo(10, -16);
+                    c.lineTo(4, -12);
+                    c.lineTo(-2, -16);
+                    c.lineTo(-8, -12);
+                    c.lineTo(-16, -15);
+                    c.closePath();
+                    c.fill();
+                    c.stroke();
+                    // 彩蛋波點
+                    c.fillStyle = '#ffafcc';
+                    c.beginPath();
+                    c.arc(-6, -22, 2.5, 0, Math.PI * 2);
+                    c.arc(6, -21, 2.5, 0, Math.PI * 2);
+                    c.fill();
+                    break;
+
+                case 'spring_chick': // 小黃雞頭飾
+                    c.fillStyle = '#ffd166';
+                    c.beginPath();
+                    c.arc(0, -23, 8, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    c.fillStyle = '#ff7b00';
+                    c.beginPath();
+                    c.moveTo(-2.5, -22); c.lineTo(2.5, -22); c.lineTo(0, -19);
+                    c.closePath();
+                    c.fill();
+                    break;
+
+                case 'daisy_crown': // 小雛菊花環
+                    const petals = ['#ffffff', '#ffafcc', '#bde0fe', '#ffd6a5'];
+                    for (let i = -2; i <= 2; i++) {
+                        c.fillStyle = petals[(i + 2) % petals.length];
+                        c.beginPath();
+                        c.arc(i * 6.5, -18 + Math.abs(i) * 1.2, 4, 0, Math.PI * 2);
+                        c.fill();
+                        c.stroke();
+                        c.fillStyle = '#ffd166';
+                        c.beginPath();
+                        c.arc(i * 6.5, -18 + Math.abs(i) * 1.2, 1.5, 0, Math.PI * 2);
+                        c.fill();
+                    }
+                    break;
+
+                // --- 暑假主題 ---
+                case 'snorkel': // 潛水呼吸管
+                    c.fillStyle = '#ffbe0b';
+                    c.beginPath();
+                    roundRectPath(c, 16, -26, 5, 22, 2.5);
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                case 'pineapple': // 鳳梨葉皇冠
+                    c.fillStyle = '#52b788';
+                    c.beginPath();
+                    c.moveTo(0, -18); c.lineTo(-10, -31); c.lineTo(-3, -24);
+                    c.lineTo(0, -34); c.lineTo(3, -24); c.lineTo(10, -31);
+                    c.closePath();
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                case 'icecream': // 甜筒雪糕帽
+                    c.fillStyle = '#ffafcc';
+                    c.beginPath();
+                    c.arc(0, -22, 8.5, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    c.fillStyle = '#f4a261';
+                    c.beginPath();
+                    c.moveTo(-7, -26); c.lineTo(7, -26); c.lineTo(0, -39);
+                    c.closePath();
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                // --- 中秋節主題 ---
+                case 'jade_rabbit': // 玉兔長耳與月亮髮飾
+                    c.fillStyle = '#ffffff';
+                    c.beginPath();
+                    c.ellipse(-8, -28, 4.2, 12, -0.15, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    c.beginPath();
+                    c.ellipse(8, -28, 4.2, 12, 0.15, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    c.fillStyle = '#ffd166';
+                    c.beginPath();
+                    c.arc(0, -21, 4.5, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                case 'mooncake': // 金黃月餅帽
+                    c.fillStyle = '#e09f3e';
+                    roundRectPath(c, -13, -27, 26, 10, 4);
+                    c.fill();
+                    c.stroke();
+                    c.strokeStyle = '#9e2a2b';
+                    c.lineWidth = 1.6;
+                    c.strokeRect(-8, -24, 16, 4);
+                    c.strokeStyle = outline;
+                    c.lineWidth = 2.5;
+                    break;
+
+                case 'pomelo_hat': // 柚子皮帽
+                    c.fillStyle = '#9ef01a';
+                    c.beginPath();
+                    c.arc(0, -16, 16, Math.PI, 0);
+                    c.closePath();
+                    c.fill();
+                    c.stroke();
+                    c.fillStyle = '#38b000';
+                    c.beginPath();
+                    c.ellipse(3, -32, 5, 2.5, 0.3, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                // --- 聖誕節主題 ---
+                case 'santa_hat': // 聖誕老人紅帽
+                    c.fillStyle = '#d62828';
+                    c.beginPath();
+                    c.moveTo(-15, -17);
+                    c.quadraticCurveTo(0, -36, 18, -24);
+                    c.lineTo(14, -17);
+                    c.closePath();
+                    c.fill();
+                    c.stroke();
+                    // 白毛邊與絨球
+                    c.fillStyle = '#ffffff';
+                    roundRectPath(c, -16, -20, 32, 6, 3);
+                    c.fill();
+                    c.stroke();
+                    c.beginPath();
+                    c.arc(19, -23, 4.5, 0, Math.PI * 2);
+                    c.fill();
+                    c.stroke();
+                    break;
+
+                case 'reindeer': // 馴鹿鹿角
+                    c.strokeStyle = '#7f4f24';
+                    c.lineWidth = 3.2;
+                    c.beginPath();
+                    c.moveTo(-9, -18); c.lineTo(-14, -32);
+                    c.moveTo(-12, -26); c.lineTo(-17, -28);
+                    c.moveTo(9, -18); c.lineTo(14, -32);
+                    c.moveTo(12, -26); c.lineTo(17, -28);
+                    c.stroke();
+                    c.strokeStyle = outline;
+                    c.lineWidth = 2.5;
+                    break;
+
+                case 'snowman_hat': // 雪人高禮帽
+                    c.fillStyle = '#2b2d42';
+                    c.fillRect(-10, -32, 20, 14);
+                    c.strokeRect(-10, -32, 20, 14);
+                    roundRectPath(c, -15, -20, 30, 4, 2);
+                    c.fill();
+                    c.stroke();
+                    c.fillStyle = '#d62828';
+                    c.fillRect(-10, -23, 20, 3);
+                    break;
+            }
+        }
+
+        function drawFrontAccessory(c, type, outline) {
+            c.strokeStyle = outline;
+            c.lineWidth = 2.3;
+            if (type === 'diving_mask') {
+                c.fillStyle = 'rgba(144, 224, 239, 0.75)';
+                roundRectPath(c, -13, -11, 26, 9, 4);
+                c.fill();
+                c.stroke();
+            } else if (type === 'watermelon_ring') {
+                // 西瓜游泳圈
+                c.fillStyle = '#38b000';
+                c.beginPath();
+                c.ellipse(0, 11, 20, 8, 0, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+                c.fillStyle = '#ff4d6d';
+                c.beginPath();
+                c.ellipse(0, 10, 16, 5.5, 0, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            } else if (type === 'sunglasses') {
+                c.fillStyle = '#1a1625';
+                roundRectPath(c, -13, -10, 11, 7, 2);
+                c.fill();
+                roundRectPath(c, 2, -10, 11, 7, 2);
+                c.fill();
+                c.beginPath();
+                c.moveTo(-2, -7); c.lineTo(2, -7);
+                c.stroke();
+            } else if (type === 'star_lantern') {
+                // 手持楊桃燈籠
+                c.fillStyle = '#ffd166';
+                c.beginPath();
+                c.arc(17, 11, 7, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            } else if (type === 'red_nose') {
+                // 馴鹿紅鼻子
+                c.fillStyle = '#e63946';
+                c.beginPath();
+                c.arc(0, -4.5, 3.8, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            } else if (type === 'red_scarf') {
+                // 雪人紅圍巾
+                c.fillStyle = '#e63946';
+                roundRectPath(c, -12, 2, 24, 5, 2.5);
+                c.fill();
+                c.stroke();
+                c.fillRect(4, 6, 5, 9);
+                c.strokeRect(4, 6, 5, 9);
+            }
+        }
+
+        // 根據角色 ID 繪製專屬目標小貓
+        function drawTargetById(c, id, x, y, scale) {
+            switch (id) {
+                // 新年
+                case 'lion_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#fff8eb', outfitColor: '#e63946', outfitStyle: 'stripe', outfitAccent: '#ffd166', costume: 'lion_dance', collarColor: '#ffb703' });
+                    break;
+                case 'god_wealth_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#d62828', outfitStyle: 'overalls', outfitAccent: '#ffb703', costume: 'god_wealth', eyeStyle: 'happy' });
+                    break;
+                case 'lantern_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#fff1d0', outfitColor: '#ff7b00', costume: 'lantern', collarColor: '#d62828' });
+                    break;
+                case 'ingot_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffe8a3', outfitColor: '#ffb703', costume: 'ingot', collarColor: '#e63946' });
+                    break;
+
+                // 復活節
+                case 'bunny_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#ffafcc', outfitStyle: 'overalls', outfitAccent: '#bde0fe', costume: 'easter_bunny', hideEars: true });
+                    break;
+                case 'egg_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#fffdf7', outfitColor: '#bde0fe', outfitStyle: 'stripe', outfitAccent: '#ffafcc', costume: 'painted_egg' });
+                    break;
+                case 'chick_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#fff3b0', outfitColor: '#ffd166', costume: 'spring_chick', eyeStyle: 'happy' });
+                    break;
+                case 'flower_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#caffbf', costume: 'daisy_crown', collarColor: '#ff8fab' });
+                    break;
+
+                // 暑假
+                case 'snorkel_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#00b4d8', outfitStyle: 'stripe', outfitAccent: '#ffffff', costume: 'snorkel', frontAccessory: 'diving_mask' });
+                    break;
+                case 'watermelon_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#fff8f0', outfitColor: '#ff758f', frontAccessory: 'watermelon_ring', eyeStyle: 'happy' });
+                    break;
+                case 'pineapple_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffe66d', outfitColor: '#ff9f1c', costume: 'pineapple', frontAccessory: 'sunglasses' });
+                    break;
+                case 'icecream_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#ffafcc', costume: 'icecream', collarColor: '#48cae4' });
+                    break;
+
+                // 中秋節
+                case 'jade_rabbit_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#c77dff', outfitStyle: 'overalls', outfitAccent: '#ffd166', costume: 'jade_rabbit', hideEars: true });
+                    break;
+                case 'mooncake_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffedd8', outfitColor: '#e09f3e', costume: 'mooncake', collarColor: '#9e2a2b' });
+                    break;
+                case 'star_lantern_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#fff3b0', outfitColor: '#fb8500', frontAccessory: 'star_lantern', eyeStyle: 'happy' });
+                    break;
+                case 'pomelo_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#80ed99', costume: 'pomelo_hat' });
+                    break;
+
+                // 聖誕節
+                case 'santa_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#d62828', outfitStyle: 'overalls', outfitAccent: '#ffffff', costume: 'santa_hat' });
+                    break;
+                case 'reindeer_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#d4a373', outfitColor: '#2d6a4f', costume: 'reindeer', frontAccessory: 'red_nose' });
+                    break;
+                case 'snowman_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#ffffff', outfitColor: '#ffffff', costume: 'snowman_hat', frontAccessory: 'red_scarf' });
+                    break;
+                case 'gingerbread_kitty':
+                    drawDetailedKitty(c, x, y, scale, { furColor: '#bc6c25', outfitColor: '#dda15e', outfitStyle: 'stripe', outfitAccent: '#ffffff', collarColor: '#d62828', eyeStyle: 'happy' });
+                    break;
+            }
+        }
+
+        // 繪製密集場景裝飾物件 (野餐桌、樹木、節日道具)
+        function drawSceneProp(c, prop, palette) {
+            c.save();
+            c.translate(prop.x, prop.y);
+            c.scale(prop.scale, prop.scale);
+            c.lineWidth = 2.6;
+            c.strokeStyle = '#1a1625';
+            c.lineJoin = 'round';
+
+            if (prop.kind === 'tree') {
+                // 陰影
+                c.fillStyle = 'rgba(20, 16, 35, 0.25)';
+                c.beginPath();
+                c.ellipse(0, 32, 34, 12, 0, 0, Math.PI * 2);
+                c.fill();
+                // 樹幹
+                c.fillStyle = '#6f4518';
+                c.fillRect(-7, 4, 14, 28);
+                c.strokeRect(-7, 4, 14, 28);
+                // 蓬鬆樹冠
+                c.fillStyle = prop.color;
+                c.beginPath();
+                c.arc(-18, -4, 20, 0, Math.PI * 2);
+                c.arc(18, -4, 20, 0, Math.PI * 2);
+                c.arc(0, -22, 24, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            } else if (prop.kind === 'table') {
+                // 廣場木桌與點心
+                c.fillStyle = 'rgba(20, 16, 35, 0.22)';
+                c.beginPath();
+                c.ellipse(0, 16, 36, 11, 0, 0, Math.PI * 2);
+                c.fill();
+                c.fillStyle = '#8d5b4c';
+                c.fillRect(-24, 2, 7, 14);
+                c.strokeRect(-24, 2, 7, 14);
+                c.fillRect(17, 2, 7, 14);
+                c.strokeRect(17, 2, 7, 14);
+                c.fillStyle = '#d4a373';
+                roundRectPath(c, -34, -8, 68, 13, 5);
+                c.fill();
+                c.stroke();
+                // 桌上美食點心
+                c.fillStyle = '#ffbe0b';
+                c.beginPath();
+                c.arc(-12, -10, 5, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+                c.fillStyle = '#ff595e';
+                c.beginPath();
+                c.arc(10, -10, 5, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+            } else if (prop.kind === 'tent') {
+                // 市集條紋帳篷
+                c.fillStyle = 'rgba(20, 16, 35, 0.28)';
+                c.beginPath();
+                c.ellipse(0, 36, 56, 16, 0, 0, Math.PI * 2);
+                c.fill();
+                c.fillStyle = '#5c4033';
+                c.fillRect(-44, -6, 7, 42);
+                c.strokeRect(-44, -6, 7, 42);
+                c.fillRect(37, -6, 7, 42);
+                c.strokeRect(37, -6, 7, 42);
+                // 帳篷頂蓬
+                const stripes = 6;
+                const w = 104 / stripes;
+                for (let i = 0; i < stripes; i++) {
+                    c.fillStyle = i % 2 === 0 ? palette.tentA : palette.tentB;
+                    c.beginPath();
+                    c.moveTo(0, -44);
+                    c.lineTo(-52 + i * w, -6);
+                    c.lineTo(-52 + (i + 1) * w, -6);
+                    c.closePath();
+                    c.fill();
+                    c.stroke();
+                }
+            } else if (prop.kind === 'arch') {
+                // 主題大型地標拱門
+                c.fillStyle = palette.archColor;
+                roundRectPath(c, -85, -75, 24, 95, 8);
+                c.fill();
+                c.stroke();
+                roundRectPath(c, 61, -75, 24, 95, 8);
+                c.fill();
+                c.stroke();
+                c.fillStyle = palette.archAccent;
+                roundRectPath(c, -96, -92, 192, 26, 12);
+                c.fill();
+                c.stroke();
+                // 拱門中央主題徽章
+                c.fillStyle = '#ffffff';
+                c.beginPath();
+                c.arc(0, -79, 17, 0, Math.PI * 2);
+                c.fill();
+                c.stroke();
+                c.font = '20px sans-serif';
+                c.textAlign = 'center';
+                c.textBaseline = 'middle';
+                c.fillText(THEMES[currentThemeIdx].icon, 0, -78);
+            } else if (prop.kind === 'festival_item') {
+                // 節日小擺設 (燈籠/彩蛋/泳圈/月餅盒/禮物盒)
+                c.fillStyle = prop.color;
+                roundRectPath(c, -11, -11, 22, 22, 6);
+                c.fill();
+                c.stroke();
+                c.fillStyle = '#ffd166';
+                c.fillRect(-11, -2, 22, 4);
+                c.fillRect(-2, -11, 4, 22);
+            }
+
+            c.restore();
+        }
+
+        /**
+         * ==========================================
+         * 5. 生成高密度主題廣場與關卡實體
+         * ==========================================
+         */
+        const FUR_PALETTE = ['#ffffff', '#fff8eb', '#ffe5b4', '#f4a261', '#adb5bd', '#6c757d', '#ffd6a5', '#e2ece9'];
+        const OUTFIT_PALETTE = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#ff924c', '#ffafcc', '#4ea8de', '#52b788', '#f77f00'];
+
+        function renderThemeSelector() {
+            const container = document.getElementById('themeSelector');
+            container.innerHTML = '';
+            THEMES.forEach((theme, idx) => {
+                const btn = document.createElement('button');
+                const isActive = idx === currentThemeIdx;
+                btn.className = `comic-btn px-3 py-1 rounded-full text-xs sm:text-sm font-black flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                    isActive ? theme.btnColor + ' scale-105' : 'bg-white/95 hover:bg-white text-slate-800'
+                }`;
+                btn.innerHTML = `<span>${theme.icon}</span><span>${theme.name}</span>`;
+                btn.addEventListener('click', () => {
+                    if (currentThemeIdx !== idx) {
+                        currentThemeIdx = idx;
+                        currentLevelIdx = 0;
+                        initLevel();
+                    }
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        function renderTargetsHeader(targetIds) {
+            const container = document.getElementById('targetsContainer');
+            container.innerHTML = '';
+
+            targetIds.forEach(id => {
+                const info = TARGET_CATALOG[id];
+                const entity = targetEntities.find(t => t.targetId === id);
+                const isFound = entity && entity.found;
+
+                const pill = document.createElement('div');
+                pill.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-xl border-2 border-slate-900 transition-all ${
+                    isFound ? 'bg-emerald-200 opacity-60 line-through' : 'bg-amber-50'
+                }`;
+
+                const miniCanvas = document.createElement('canvas');
+                miniCanvas.width = 44;
+                miniCanvas.height = 44;
+                miniCanvas.className = 'w-7 h-7 sm:w-8 sm:h-8 shrink-0';
+                const mCtx = miniCanvas.getContext('2d');
+                drawTargetById(mCtx, id, 22, 26, 0.78);
+
+                const label = document.createElement('span');
+                label.className = 'text-xs sm:text-sm font-black text-slate-900 whitespace-nowrap';
+                label.textContent = isFound ? `✅ ${info.zhName}` : info.zhName;
+
+                pill.appendChild(miniCanvas);
+                pill.appendChild(label);
+                container.appendChild(pill);
+            });
+        }
+
+        function initLevel() {
+            const theme = THEMES[currentThemeIdx];
+            const levelConfig = theme.levels[currentLevelIdx];
+
+            renderThemeSelector();
+
+            // 更新頂部關卡標籤與標題
+            document.getElementById('themeIcon').textContent = theme.icon;
+            document.getElementById('levelLabel').textContent = `${theme.name}・關卡 ${currentLevelIdx + 1}/3`;
+            const firstTargetInfo = TARGET_CATALOG[levelConfig.targets[0]];
+            document.getElementById('challengeHeadline').textContent = firstTargetInfo.headline;
+
+            // 重置狀態
+            entities = [];
+            targetEntities = [];
+            particles = [];
+            hintRings = [];
+            hintsLeft = 3;
+            hintsUsed = 0;
+            isGameWon = false;
+            startTime = Date.now();
+            elapsedSeconds = 0;
+            document.getElementById('hintCount').textContent = hintsLeft;
+            document.getElementById('timerText').textContent = '00:00';
+            document.getElementById('winModal').classList.add('hidden');
+            document.getElementById('winModal').classList.remove('flex');
+
+            const margin = 120;
+
+            // 1. 放置大型地標拱門與市集帳篷
+            entities.push({ type: 'prop', kind: 'arch', x: 520, y: 260, scale: 1.05 });
+            entities.push({ type: 'prop', kind: 'arch', x: WORLD_W - 520, y: 260, scale: 1.05 });
+
+            for (let i = 0; i < 14; i++) {
+                entities.push({
+                    type: 'prop',
+                    kind: 'tent',
+                    x: margin + 120 + Math.random() * (WORLD_W - margin * 2 - 240),
+                    y: margin + 220 + Math.random() * (WORLD_H - margin * 2 - 320),
+                    scale: 0.95 + Math.random() * 0.2
+                });
+            }
+
+            // 2. 放置樹木、木桌與節日小擺設
+            for (let i = 0; i < 65; i++) {
+                const leaves = theme.palette.treeLeaves;
+                entities.push({
+                    type: 'prop',
+                    kind: 'tree',
+                    x: margin + Math.random() * (WORLD_W - margin * 2),
+                    y: margin + Math.random() * (WORLD_H - margin * 2),
+                    scale: 0.9 + Math.random() * 0.3,
+                    color: leaves[i % leaves.length]
+                });
+            }
+
+            for (let i = 0; i < 42; i++) {
+                entities.push({
+                    type: 'prop',
+                    kind: 'table',
+                    x: margin + 80 + Math.random() * (WORLD_W - margin * 2 - 160),
+                    y: margin + 120 + Math.random() * (WORLD_H - margin * 2 - 200),
+                    scale: 0.95
+                });
+            }
+
+            for (let i = 0; i < 90; i++) {
+                entities.push({
+                    type: 'prop',
+                    kind: 'festival_item',
+                    x: margin + Math.random() * (WORLD_W - margin * 2),
+                    y: margin + Math.random() * (WORLD_H - margin * 2),
+                    scale: 0.85 + Math.random() * 0.25,
+                    color: OUTFIT_PALETTE[i % OUTFIT_PALETTE.length]
+                });
+            }
+
+            // 3. 放置目標隱藏小貓 (確保彼此有足夠距離，且不被大型建築遮住)
+            levelConfig.targets.forEach(tId => {
+                let tx, ty, valid;
+                let attempts = 0;
+                do {
+                    valid = true;
+                    tx = margin + 140 + Math.random() * (WORLD_W - margin * 2 - 280);
+                    ty = margin + 260 + Math.random() * (WORLD_H - margin * 2 - 380);
+                    for (const existing of targetEntities) {
+                        if (Math.hypot(tx - existing.x, ty - existing.y) < 420) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                } while (!valid && attempts < 80);
+
+                const targetObj = {
+                    type: 'target',
+                    targetId: tId,
+                    x: tx,
+                    y: ty,
+                    scale: 0.96,
+                    found: false,
+                    bobOffset: Math.random() * Math.PI * 2
+                };
+                targetEntities.push(targetObj);
+                entities.push(targetObj);
+            });
+
+            // 4. 生成超密集人群小貓 (採用抖動網格 + 隨機微調，呈現密密麻麻熱鬧視覺)
+            const totalCrowd = levelConfig.crowdCount;
+            const cols = Math.ceil(Math.sqrt(totalCrowd * (WORLD_W / WORLD_H)));
+            const rows = Math.ceil(totalCrowd / cols);
+            const cellW = (WORLD_W - margin * 2) / cols;
+            const cellH = (WORLD_H - margin * 2) / rows;
+
+            let placed = 0;
+            for (let r = 0; r < rows && placed < totalCrowd; r++) {
+                for (let cIdx = 0; cIdx < cols && placed < totalCrowd; cIdx++) {
+                    const cx = margin + (cIdx + 0.5) * cellW + (Math.random() - 0.5) * cellW * 0.85;
+                    const cy = margin + (r + 0.5) * cellH + (Math.random() - 0.5) * cellH * 0.85;
+
+                    // 保護目標小貓正前方不完全遮死
+                    let tooCloseToTarget = false;
+                    for (const t of targetEntities) {
+                        const dx = Math.abs(cx - t.x);
+                        const dy = cy - t.y;
+                        if (dx < 26 && dy > -10 && dy < 34) {
+                            tooCloseToTarget = true;
+                            break;
+                        }
+                    }
+                    if (tooCloseToTarget) continue;
+
+                    const eyeStyles = ['normal', 'normal', 'normal', 'happy', 'glasses'];
+                    const outfitStyles = ['none', 'stripe', 'overalls'];
+                    const patchColors = [null, null, '#f4a261', '#6c757d', '#ffb5a7'];
+
+                    entities.push({
+                        type: 'crowd',
+                        x: cx,
+                        y: cy,
+                        scale: 0.88 + Math.random() * 0.16,
+                        bobOffset: Math.random() * Math.PI * 2,
+                        opt: {
+                            furColor: FUR_PALETTE[Math.floor(Math.random() * FUR_PALETTE.length)],
+                            outfitColor: OUTFIT_PALETTE[Math.floor(Math.random() * OUTFIT_PALETTE.length)],
+                            outfitStyle: outfitStyles[Math.floor(Math.random() * outfitStyles.length)],
+                            outfitAccent: FUR_PALETTE[Math.floor(Math.random() * FUR_PALETTE.length)],
+                            collarColor: Math.random() > 0.55 ? OUTFIT_PALETTE[Math.floor(Math.random() * OUTFIT_PALETTE.length)] : null,
+                            eyeStyle: eyeStyles[Math.floor(Math.random() * eyeStyles.length)],
+                            foreheadPatch: patchColors[Math.floor(Math.random() * patchColors.length)],
+                            tailDir: Math.random() > 0.5 ? 1 : -1
+                        }
+                    });
+                    placed++;
+                }
+            }
+
+            // 依 Y 軸深度排序，營造立體前後遮擋層次
+            entities.sort((a, b) => a.y - b.y);
+
+            renderTargetsHeader(levelConfig.targets);
+        }
+
+        /**
+         * ==========================================
+         * 6. 主繪圖迴圈與地面背景渲染
+         * ==========================================
+         */
+        function drawWorldBackground(palette) {
+            // 廣場底色
+            ctx.fillStyle = palette.ground;
+            ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+
+            // 手繪石板磚格紋
+            ctx.fillStyle = palette.groundTile;
+            const tile = 90;
+            for (let gx = 0; gx < WORLD_W; gx += tile) {
+                for (let gy = 0; gy < WORLD_H; gy += tile) {
+                    if (((gx / tile) + (gy / tile)) % 2 === 0) {
+                        roundRectPath(ctx, gx + 6, gy + 6, tile - 12, tile - 12, 12);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // 廣場交錯步道
+            ctx.fillStyle = palette.road;
+            ctx.strokeStyle = palette.roadBorder;
+            ctx.lineWidth = 4;
+
+            // 橫向與縱向主幹道
+            roundRectPath(ctx, 160, 620, WORLD_W - 320, 150, 40);
+            ctx.fill();
+            ctx.stroke();
+
+            roundRectPath(ctx, 160, 1480, WORLD_W - 320, 160, 40);
+            ctx.fill();
+            ctx.stroke();
+
+            roundRectPath(ctx, 160, 2280, WORLD_W - 320, 150, 40);
+            ctx.fill();
+            ctx.stroke();
+
+            roundRectPath(ctx, 720, 240, 150, WORLD_H - 440, 40);
+            ctx.fill();
+            ctx.stroke();
+
+            roundRectPath(ctx, 1530, 240, 150, WORLD_H - 440, 40);
+            ctx.fill();
+            ctx.stroke();
+
+            // 頂部節日彩旗串
+            const bannerRows = [140, 960, 1860];
+            bannerRows.forEach(by => {
+                ctx.strokeStyle = '#1a1625';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(80, by);
+                ctx.quadraticCurveTo(WORLD_W / 2, by + 65, WORLD_W - 80, by);
+                ctx.stroke();
+
+                const flags = 34;
+                for (let i = 1; i < flags; i++) {
+                    const t = i / flags;
+                    const fx = 80 + t * (WORLD_W - 160);
+                    const fy = by + Math.sin(t * Math.PI) * 33;
+                    ctx.fillStyle = palette.bannerColors[i % palette.bannerColors.length];
+                    ctx.beginPath();
+                    ctx.moveTo(fx - 12, fy);
+                    ctx.lineTo(fx + 12, fy);
+                    ctx.lineTo(fx, fy + 22);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            });
+
+            // 外圍圍欄邊框
+            ctx.strokeStyle = '#1a1625';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(40, 40, WORLD_W - 80, WORLD_H - 80);
+        }
+
+        function animate(timestamp) {
+            const dpr = window.devicePixelRatio || 1;
+            const viewW = canvas.width / dpr;
+            const viewH = canvas.height / dpr;
+
+            // 更新計時器
+            if (!isGameWon) {
+                const sec = Math.floor((Date.now() - startTime) / 1000);
+                if (sec !== elapsedSeconds) {
+                    elapsedSeconds = sec;
+                    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+                    const ss = String(sec % 60).padStart(2, '0');
+                    document.getElementById('timerText').textContent = `${mm}:${ss}`;
+                }
+            }
+
+            // 限制攝影機邊界
+            const halfW = (viewW / 2) / cam.zoom;
+            const halfH = (viewH / 2) / cam.zoom;
+            const pad = 160;
+            cam.x = Math.max(halfW - pad, Math.min(WORLD_W - halfW + pad, cam.x));
+            cam.y = Math.max(halfH - pad, Math.min(WORLD_H - halfH + pad, cam.y));
+
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
+            // 背景填充
+            ctx.fillStyle = '#1a1625';
+            ctx.fillRect(0, 0, viewW, viewH);
+
+            // 套用攝影機變換
+            ctx.translate(viewW / 2, viewH / 2);
+            ctx.scale(cam.zoom, cam.zoom);
+            ctx.translate(-cam.x, -cam.y);
+
+            const theme = THEMES[currentThemeIdx];
+            drawWorldBackground(theme.palette);
+
+            // 計算視野裁剪框 (大幅提升千隻角色渲染幀率)
+            const cullPad = 140;
+            const minVisX = cam.x - halfW - cullPad;
+            const maxVisX = cam.x + halfW + cullPad;
+            const minVisY = cam.y - halfH - cullPad;
+            const maxVisY = cam.y + halfH + cullPad;
+
+            const timeSec = (timestamp || 0) * 0.003;
+
+            for (let i = 0; i < entities.length; i++) {
+                const ent = entities[i];
+                if (ent.x < minVisX || ent.x > maxVisX || ent.y < minVisY || ent.y > maxVisY) {
+                    continue;
+                }
+
+                if (ent.type === 'prop') {
+                    drawSceneProp(ctx, ent, theme.palette);
+                } else if (ent.type === 'crowd') {
+                    const bob = Math.sin(timeSec + ent.bobOffset) * 1.2;
+                    drawDetailedKitty(ctx, ent.x, ent.y + bob, ent.scale, ent.opt);
+                } else if (ent.type === 'target') {
+                    const bob = Math.sin(timeSec * 1.3 + ent.bobOffset) * 1.5;
+                    drawTargetById(ctx, ent.targetId, ent.x, ent.y + bob, ent.scale);
+
+                    // 已找到的目標加上發光綠圈標記
+                    if (ent.found) {
+                        ctx.save();
+                        ctx.strokeStyle = '#10b981';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.arc(ent.x, ent.y - 4, 28, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // 繪製提示雷達波紋
+            for (let i = hintRings.length - 1; i >= 0; i--) {
+                const ring = hintRings[i];
+                ring.progress += 0.015;
+                if (ring.progress >= 1) {
+                    hintRings.splice(i, 1);
+                    continue;
+                }
+                const radius = 30 + ring.progress * 170;
+                const alpha = 1 - ring.progress;
+                ctx.save();
+                ctx.strokeStyle = `rgba(16, 185, 129, ${alpha})`;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(ring.x, ring.y, radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 繪製點擊粒子特效
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.18;
+                p.life -= 0.025;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.restore();
+            requestAnimationFrame(animate);
+        }
+
+        /**
+         * ==========================================
+         * 7. 互動點擊判定、縮放、拖曳與 UI 事件
+         * ==========================================
+         */
+        let toastTimer = null;
+        function showToast(msg) {
+            const box = document.getElementById('toastBox');
+            document.getElementById('toastText').textContent = msg;
+            box.classList.remove('opacity-0');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                box.classList.add('opacity-0');
+            }, 2000);
+        }
+
+        function spawnBurst(wx, wy, colors) {
+            for (let i = 0; i < 24; i++) {
+                const angle = (Math.PI * 2 * i) / 24 + Math.random() * 0.2;
+                const speed = 2 + Math.random() * 5;
+                particles.push({
+                    x: wx,
+                    y: wy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 2,
+                    size: 4 + Math.random() * 4,
+                    color: colors[i % colors.length],
+                    life: 1
+                });
+            }
+        }
+
+        function screenToWorld(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const sx = clientX - rect.left;
+            const sy = clientY - rect.top;
+            return {
+                x: (sx - rect.width / 2) / cam.zoom + cam.x,
+                y: (sy - rect.height / 2) / cam.zoom + cam.y
+            };
+        }
+
+        function handleTapAt(clientX, clientY) {
+            if (isGameWon) return;
+            const wp = screenToWorld(clientX, clientY);
+
+            // 檢查是否點中尚未找到的目標小貓
+            let hitTarget = null;
+            for (const t of targetEntities) {
+                if (!t.found && Math.hypot(wp.x - t.x, wp.y - (t.y - 4)) <= 36) {
+                    hitTarget = t;
+                    break;
+                }
+            }
+
+            if (hitTarget) {
+                hitTarget.found = true;
+                playTone('found');
+                spawnBurst(hitTarget.x, hitTarget.y - 6, ['#10b981', '#fbbf24', '#f43f5e', '#38bdf8']);
+
+                const theme = THEMES[currentThemeIdx];
+                const levelConfig = theme.levels[currentLevelIdx];
+                renderTargetsHeader(levelConfig.targets);
+
+                const info = TARGET_CATALOG[hitTarget.targetId];
+                const remaining = targetEntities.filter(t => !t.found).length;
+
+                if (remaining === 0) {
+                    isGameWon = true;
+                    playTone('win');
+                    setTimeout(() => {
+                        document.getElementById('finalTime').textContent = document.getElementById('timerText').textContent;
+                        document.getElementById('finalHints').textContent = `${hintsUsed} 次`;
+
+                        const nextBtn = document.getElementById('nextLevelBtn');
+                        if (currentLevelIdx < 2) {
+                            nextBtn.textContent = `挑戰${theme.name}第 ${currentLevelIdx + 2} 關 ➡️`;
+                        } else {
+                            const nextTheme = THEMES[(currentThemeIdx + 1) % THEMES.length];
+                            nextBtn.textContent = `前往下一個主題：${nextTheme.icon} ${nextTheme.name} ➡️`;
+                        }
+
+                        document.getElementById('winModal').classList.remove('hidden');
+                        document.getElementById('winModal').classList.add('flex');
+                    }, 480);
+                } else {
+                    showToast(`🎉 找到了「${info.zhName}」！還剩 ${remaining} 隻！`);
+                }
+            } else {
+                playTone('miss');
+                spawnBurst(wp.x, wp.y, ['#ffffff', '#cbd5e1']);
+            }
+        }
+
+        // 滑鼠事件
+        canvas.addEventListener('mousedown', e => {
+            isDragging = true;
+            dragMoved = false;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            const dx = e.clientX - lastPointerX;
+            const dy = e.clientY - lastPointerY;
+            if (Math.hypot(dx, dy) > 5) dragMoved = true;
+            cam.x -= dx / cam.zoom;
+            cam.y -= dy / cam.zoom;
+            lastPointerX = e.clientX;
+            lastPointerY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (isDragging && !dragMoved && e.target === canvas) {
+                handleTapAt(e.clientX, e.clientY);
+            }
+            isDragging = false;
+        });
+
+        // 滾輪縮放 (以游標為中心)
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const before = screenToWorld(e.clientX, e.clientY);
+            const factor = e.deltaY < 0 ? 1.12 : 0.89;
+            cam.zoom = Math.max(cam.minZoom, Math.min(cam.maxZoom, cam.zoom * factor));
+            const after = screenToWorld(e.clientX, e.clientY);
+            cam.x += before.x - after.x;
+            cam.y += before.y - after.y;
+        }, { passive: false });
+
+        // 觸控單指拖曳與雙指捏合縮放
+        canvas.addEventListener('touchstart', e => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                dragMoved = false;
+                lastPointerX = e.touches[0].clientX;
+                lastPointerY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                isDragging = false;
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                initialPinchZoom = cam.zoom;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (e.touches.length === 1 && isDragging) {
+                const dx = e.touches[0].clientX - lastPointerX;
+                const dy = e.touches[0].clientY - lastPointerY;
+                if (Math.hypot(dx, dy) > 6) dragMoved = true;
+                cam.x -= dx / cam.zoom;
+                cam.y -= dy / cam.zoom;
+                lastPointerX = e.touches[0].clientX;
+                lastPointerY = e.touches[0].clientY;
+            } else if (e.touches.length === 2 && initialPinchDist > 0) {
+                const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const before = screenToWorld(midX, midY);
+                cam.zoom = Math.max(cam.minZoom, Math.min(cam.maxZoom, initialPinchZoom * (dist / initialPinchDist)));
+                const after = screenToWorld(midX, midY);
+                cam.x += before.x - after.x;
+                cam.y += before.y - after.y;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            if (isDragging && !dragMoved && e.changedTouches.length === 1) {
+                handleTapAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            }
+            if (e.touches.length === 0) {
+                isDragging = false;
+                initialPinchDist = 0;
+            }
+        });
+
+        // 功能按鈕綁定
+        document.getElementById('levelBtn').addEventListener('click', () => {
+            currentLevelIdx = (currentLevelIdx + 1) % 3;
+            initLevel();
+            showToast(`切換至 ${THEMES[currentThemeIdx].name}・關卡 ${currentLevelIdx + 1}/3`);
+        });
+
+        document.getElementById('hintBtn').addEventListener('click', () => {
+            if (isGameWon) return;
+            const unfound = targetEntities.filter(t => !t.found);
+            if (unfound.length === 0) return;
+
+            if (hintsLeft <= 0) {
+                showToast('本關提示次數已用完囉！仔細放大找找看 👀');
+                return;
+            }
+
+            hintsLeft--;
+            hintsUsed++;
+            document.getElementById('hintCount').textContent = hintsLeft;
+            playTone('hint');
+
+            const target = unfound[0];
+            // 平滑移動攝影機靠近提示目標並啟動雷達波紋
+            cam.x = target.x;
+            cam.y = target.y;
+            cam.zoom = Math.max(cam.zoom, 1.15);
+
+            for (let k = 0; k < 3; k++) {
+                setTimeout(() => {
+                    hintRings.push({ x: target.x, y: target.y - 4, progress: 0 });
+                }, k * 250);
+            }
+            showToast(`🔍 雷達已鎖定「${TARGET_CATALOG[target.targetId].zhName}」附近！`);
+        });
+
+        document.getElementById('bgmBtn').addEventListener('click', () => {
+            bgmEnabled = !bgmEnabled;
+            const btn = document.getElementById('bgmBtn');
+            if (bgmEnabled) {
+                btn.textContent = '🎵';
+                btn.classList.remove('opacity-50');
+                if (soundEnabled) {
+                    ensureAudio();
+                    startBgm();
+                }
+                showToast('柔和背景音樂已開啟 🎶');
+            } else {
+                btn.textContent = '🎵';
+                btn.classList.add('opacity-50');
+                stopBgm();
+                showToast('背景音樂已暫停');
+            }
+        });
+
+        document.getElementById('soundBtn').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
+            if (soundEnabled && bgmEnabled) {
+                ensureAudio();
+                startBgm();
+            } else if (!soundEnabled) {
+                stopBgm();
+            }
+            showToast(soundEnabled ? '所有聲音已開啟' : '已切換為靜音模式');
+        });
+
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            cam.zoom = Math.min(cam.maxZoom, cam.zoom * 1.25);
+        });
+
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            cam.zoom = Math.max(cam.minZoom, cam.zoom * 0.8);
+        });
+
+        document.getElementById('resetViewBtn').addEventListener('click', () => {
+            cam.x = WORLD_W / 2;
+            cam.y = WORLD_H / 2;
+            cam.zoom = 0.65;
+            showToast('已重設為全景視角 🎯');
+        });
+
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            if (currentLevelIdx < 2) {
+                currentLevelIdx++;
+            } else {
+                currentLevelIdx = 0;
+                currentThemeIdx = (currentThemeIdx + 1) % THEMES.length;
+            }
+            initLevel();
+        });
+
+        document.getElementById('replayLevelBtn').addEventListener('click', () => {
+            initLevel();
+        });
+
+        // 響應式畫布尺寸調整
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        window.onload = function () {
+            resizeCanvas();
+            initLevel();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
